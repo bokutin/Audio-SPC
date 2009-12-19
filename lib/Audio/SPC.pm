@@ -11,7 +11,12 @@ use constant {
     IDX_COMMENT => 4,
 };
 
-my @FORMAT = map { my @cols = m/^(\w+) (.*) ([\dA-Z]{5}) ([\d,]+) (.*)$/ or die $_; \@cols; } split(/\n/, <<'');
+my @FORMAT = map {
+    my @cols = m/^(\w+) (.*) ([\dA-Z]{5}) ([\d,]+) (.*)$/ or die $_;
+    $cols[IDX_LENGTH] =~ s/,//g;
+    $cols[IDX_OFFSET] = hex($cols[IDX_OFFSET]);
+    \@cols;
+} split(/\n/, <<'');
 header SPC ファイル ヘッダ 00000 256 ID666 などの SPC ファイル情報。
 ram SPC 64KB RAM 00100 65,536 64KB RAM の内容です。 サウンド ドライバやシーケンス、波形データなど。
 dsp_register SPC DSP レジスタ 10100 128 DSP レジスタの内容です。 音量設定やチャンネル設定など。
@@ -48,6 +53,13 @@ accessor: {
             $self->{$key};
         };
     }
+}
+
+sub tag {
+    my ( $self ) = @_;
+
+    require Audio::ID666;
+    Audio::ID666->new( $self->{header} );
 }
 
 =head1 AUTHOR

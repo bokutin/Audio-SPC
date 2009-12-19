@@ -6,9 +6,13 @@
 use strict;
 use warnings;
 
+use lib "lib";
+
 use IO::All;
 use Win32::API;
 use Win32::Sound;
+
+use Audio::SPC;
 
 my $HZ = 44100;
 my $BITS = 16;
@@ -43,13 +47,19 @@ USAGE
 }
 
 main: {
-    my $spc_fn = $ARGV[0] or die _usage();
-    my $spc    = io->file($spc_fn)->binary->all;
+    my $spc_fn   = $ARGV[0] or die _usage();
+    my $spc_data = io->file($spc_fn)->binary->all;
+    my $spc      = Audio::SPC->new($spc_data);
 
     ResetAPU();
     SetAPUOpt(-1, $CH, $BITS, $HZ, -1, -1);
-    LoadSPCFile($spc);
-    my $play_length = SetDSPLength( $DSP_TIME*60*1, $DSP_TIME*1 );
+    LoadSPCFile($spc_data);
+    my $fade = $spc->tag->get_field("フェードアウト時間") || 1000;
+    my $play = $spc->tag->get_field("演奏時間") || 60;
+
+    $fade =~ s/\D//g;
+
+    my $play_length = SetDSPLength( $DSP_TIME*$play, $DSP_TIME*($fade/1000) );
     my $play_sec    = $play_length / $DSP_TIME;
 
     my $wav = Win32::Sound::WaveOut->new($HZ, $BITS, $CH);
